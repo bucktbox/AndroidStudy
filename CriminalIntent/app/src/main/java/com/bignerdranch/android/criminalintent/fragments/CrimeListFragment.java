@@ -16,7 +16,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bignerdranch.android.criminalintent.R;
-import com.bignerdranch.android.criminalintent.activities.CrimeActivity;
+import com.bignerdranch.android.criminalintent.activities.CrimePagerActivity;
 import com.bignerdranch.android.criminalintent.models.Crime;
 import com.bignerdranch.android.criminalintent.models.CrimeLab;
 
@@ -147,7 +147,7 @@ public class CrimeListFragment extends Fragment {
         public void onClick(View view) {
             Toast.makeText(getActivity(), mCrime.getTitle() + " 선택됨!", Toast.LENGTH_SHORT).show();
 
-            Intent intent = CrimeActivity.newIntent(getActivity(), mCrime.getId(), mPosition);
+            Intent intent = CrimePagerActivity.newIntent(getActivity(), mCrime.getId(), mPosition);
             startActivityForResult(intent, REQUEST_CRIME);
         }
 
