@@ -11,6 +11,9 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -33,7 +36,6 @@ public class CrimeFragment extends Fragment {
 
     private static final String TAG = "CrimeFragment";
     private static final String ARG_CRIME_ID = "crime_id";
-    private static final String ARG_CRIME_POSITION = "crime_position";
     private static final String DIALOG_DATE = "DialogDate";
     private static final String DIALOG_TIME = "DialogTime";
 
@@ -46,10 +48,11 @@ public class CrimeFragment extends Fragment {
     private Button mTimeButton;
     private CheckBox mSolvedCheckBox;
 
+    private String mTime;
+
     public static CrimeFragment newInstance(UUID crimeId, int crimePosition) {
         Bundle args = new Bundle();
         args.putSerializable(ARG_CRIME_ID, crimeId);
-        args.putSerializable(ARG_CRIME_POSITION, crimePosition);
 
         CrimeFragment fragment = new CrimeFragment();
         fragment.setArguments(args);
@@ -57,25 +60,59 @@ public class CrimeFragment extends Fragment {
         return fragment;
     }
 
-    public static int getResultPosition(Intent result) {
-        return (int) result.getSerializableExtra(ARG_CRIME_POSITION);
-    }
-
-    public void returnResult(int position) {
+    public void returnResult() {
         Intent data = new Intent();
-        data.putExtra(ARG_CRIME_POSITION, position);
         getActivity().setResult(Activity.RESULT_OK, data);
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+
+        if(savedInstanceState != null) {
+            mTime = savedInstanceState.getString(DIALOG_TIME);
+        }
+
         UUID crimeId = (UUID)getArguments().getSerializable(ARG_CRIME_ID);
-        int position = (int)getArguments().getSerializable(ARG_CRIME_POSITION);
 
         mCrime = CrimeLab.getInstance(getActivity()).getCrime(crimeId);
 
-        returnResult(position);
+        returnResult();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        CrimeLab.getInstance(getActivity()).updateCrime(mCrime);
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(DIALOG_TIME, mTime);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_crime, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_remove_crime:
+                CrimeLab.getInstance(getActivity()).removeCrime(mCrime.getId());
+                getActivity().finish();
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+
+
     }
 
     @Nullable
@@ -88,8 +125,6 @@ public class CrimeFragment extends Fragment {
         mTimeButton = (Button)view.findViewById(R.id.crime_time);
         mSolvedCheckBox = (CheckBox)view.findViewById(R.id.crime_solved);
 
-        updateDate();
-
         mTimeButton.setText("발생 시간 등록");
         mTimeButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -100,6 +135,8 @@ public class CrimeFragment extends Fragment {
                 if (fragmentManager != null) {
                     timePickerFragment.show(fragmentManager, DIALOG_TIME);
                 }
+                /*Intent intent = TimePickerActivity.newIntent(getActivity());
+                startActivityForResult(intent, REQUEST_TIME);*/
 
             }
         });
@@ -132,6 +169,8 @@ public class CrimeFragment extends Fragment {
                 if (fragmentManager != null) {
                     datePickerFragment.show(fragmentManager, DIALOG_DATE);
                 }
+                /*Intent intent = DatePickerActivity.newIntent(getActivity());
+                startActivityForResult(intent, REQUEST_DATE);*/
             }
         });
 
@@ -142,6 +181,8 @@ public class CrimeFragment extends Fragment {
                 mCrime.setSolved(b);
             }
         });
+
+        updateDate();
 
         return view;
     }
@@ -159,12 +200,16 @@ public class CrimeFragment extends Fragment {
         }
 
         if(requestCode == REQUEST_TIME) {
-            String time = (String)data.getSerializableExtra(TimePickerFragment.EXTRA_TIME);
-            mTimeButton.setText(time);
+            mTime = (String)data.getSerializableExtra(TimePickerFragment.EXTRA_TIME);
+            mTimeButton.setText(mTime);
         }
     }
 
     private void updateDate() {
         mDateButton.setText(mCrime.getDate().toString());
+
+        if(mTime != null) {
+            mTimeButton.setText(mTime);
+        }
     }
 }

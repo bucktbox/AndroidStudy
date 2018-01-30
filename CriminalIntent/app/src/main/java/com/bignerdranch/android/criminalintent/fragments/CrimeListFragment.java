@@ -1,13 +1,19 @@
 package com.bignerdranch.android.criminalintent.fragments;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
@@ -28,19 +34,32 @@ import java.util.List;
 
 public class CrimeListFragment extends Fragment {
 
+    private static final String SAVED_SUBTITLE_VISIBLE = "subTitle";
     private static final int REQUEST_CRIME = 1;
 
     private RecyclerView mCrimeRecyclerView;
+    private TextView mEmptyTextView;
     private CrimeAdapter mCrimeAdapter;
+    private boolean mSubtitleVisible;
 
-    private int mChangedCrimePosition;
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+    }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_crime_list, container, false);
         mCrimeRecyclerView = (RecyclerView)view.findViewById(R.id.crime_recycler_view);
+        mEmptyTextView = (TextView)view.findViewById(R.id.crime_list_empty_text_view);
+
         mCrimeRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+
+        if(savedInstanceState != null) {
+            mSubtitleVisible = savedInstanceState.getBoolean(SAVED_SUBTITLE_VISIBLE);
+        }
 
         updateUI();
 
@@ -55,15 +74,65 @@ public class CrimeListFragment extends Fragment {
             Log.d(CrimeListFragment.class.getName(), "activity result received");
             Toast.makeText(getActivity(), "리스트로 돌아왔습니다", Toast.LENGTH_SHORT).show();
 
-            mChangedCrimePosition = CrimeFragment.getResultPosition(data);
-
             updateUI();
         }
     }
 
     @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(SAVED_SUBTITLE_VISIBLE, mSubtitleVisible);
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
+        updateSubtitle();
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_crime_list, menu);
+
+        MenuItem subTitleItem = menu.findItem(R.id.menu_item_show_subtitle);
+        if(mSubtitleVisible) subTitleItem.setTitle(R.string.hide_subtitle);
+        else subTitleItem.setTitle(R.string.show_subtitle);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+
+            case R.id.menu_item_new_crime:
+                Crime crime = new Crime();
+                CrimeLab.getInstance(getActivity()).addCrime(crime);
+                Intent intent = CrimePagerActivity.newIntent(getActivity(), crime.getId(), crime.getPosition());
+                Log.d("crimelist", "add new crime, position = " + crime.getPosition());
+                startActivityForResult(intent, REQUEST_CRIME);
+                return true;
+
+            case R.id.menu_item_show_subtitle:
+                mSubtitleVisible = !mSubtitleVisible;
+                getActivity().invalidateOptionsMenu();
+                updateSubtitle();
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+
+    }
+
+    private void updateSubtitle() {
+        CrimeLab crimeLab = CrimeLab.getInstance(getActivity());
+        int crimeCount = crimeLab.getCrimes().size();
+        @SuppressLint("StringFormatMatches") String subTitle = getString(R.string.subtitle_format, crimeCount);
+
+        if (!mSubtitleVisible) subTitle = null;
+
+        AppCompatActivity activity = (AppCompatActivity)getActivity();
+        activity.getSupportActionBar().setSubtitle(subTitle);
     }
 
     private void updateUI() {
@@ -71,13 +140,18 @@ public class CrimeListFragment extends Fragment {
         CrimeLab crimeLab = CrimeLab.getInstance(getActivity());
         List<Crime> crimes = crimeLab.getCrimes();
 
+        /*if (crimes.size() == 0) {
+            Intent intent = new Intent(getActivity(), CrimeEmptyActivity.class);
+            startActivity(intent);
+        } else*/
         if (mCrimeAdapter == null) {
             mCrimeAdapter = new CrimeAdapter(crimes);
             mCrimeRecyclerView.setAdapter(mCrimeAdapter);
+            updateSubtitle();
         } else {
-            mCrimeAdapter.notifyItemChanged(mChangedCrimePosition);
+            mCrimeAdapter.notifyDataSetChanged();
+            updateSubtitle();
         }
-
     }
 
     private class CrimeAdapter extends RecyclerView.Adapter<CrimeHolder> {
@@ -105,6 +179,15 @@ public class CrimeListFragment extends Fragment {
 
         @Override
         public int getItemCount() {
+            if (mCrimes.size() == 0) {
+                Log.d("crimelist", "crime list size 0");
+                mCrimeRecyclerView.setVisibility(View.INVISIBLE);
+                mEmptyTextView.setVisibility(View.VISIBLE);
+            } else {
+                Log.d("crimelist", "crime list size = " + mCrimes.size());
+                mCrimeRecyclerView.setVisibility(View.VISIBLE);
+                mEmptyTextView.setVisibility(View.INVISIBLE);
+            }
             return mCrimes.size();
         }
     }
@@ -141,6 +224,8 @@ public class CrimeListFragment extends Fragment {
             mDateTextView.setText(mCrime.getDate().toString());
             mSolvedCheckBox.setChecked(mCrime.isSolved());
             mPosition = position;
+
+            Log.d("crimelist", "bindcrime = " + position);
         }
 
         @Override
