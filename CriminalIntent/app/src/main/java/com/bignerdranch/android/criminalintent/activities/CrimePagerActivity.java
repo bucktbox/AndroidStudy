@@ -23,18 +23,16 @@ import java.util.UUID;
  * Created by Kyeongil Han on 2018-01-29.
  */
 
-public class CrimePagerActivity extends AppCompatActivity {
+public class CrimePagerActivity extends AppCompatActivity implements CrimeFragment.Callbacks{
 
     private ViewPager mViewPager;
     private List<Crime> mCrimes;
 
     private static final String EXTRA_CRIME_ID = "com.bignerdranch.android.criminalintent.crime_id";
-    private static final String EXTRA_CRIME_POSITION = "com.bignerdranch.android.criminalintent.crime_position";
 
-    public static Intent newIntent(Context packageContext, UUID crimeId, int crimePosition) {
+    public static Intent newIntent(Context packageContext, UUID crimeId) {
         Intent intent = new Intent(packageContext, CrimePagerActivity.class);
         intent.putExtra(EXTRA_CRIME_ID, crimeId);
-        intent.putExtra(EXTRA_CRIME_POSITION, crimePosition);
         return intent;
     }
 
@@ -44,9 +42,8 @@ public class CrimePagerActivity extends AppCompatActivity {
         setContentView(R.layout.activity_crime_pager);
 
         UUID crimeId = (UUID)getIntent().getSerializableExtra(EXTRA_CRIME_ID);
-        int crimePosition = (int)getIntent().getSerializableExtra(EXTRA_CRIME_POSITION);
 
-        Log.d("CrimePager", "crimeId = " + crimeId + " crimePosition = " + crimePosition);
+        Log.d("CrimePager", "crimeId = " + crimeId);
 
         mViewPager = (ViewPager)findViewById(R.id.activity_crime_pager_view_pager);
 
@@ -57,7 +54,7 @@ public class CrimePagerActivity extends AppCompatActivity {
             public Fragment getItem(int position) {
 
                 Crime crime = mCrimes.get(position);
-                return CrimeFragment.newInstance(crime.getId(), position);
+                return CrimeFragment.newInstance(crime.getId());
             }
 
             @Override
@@ -72,5 +69,10 @@ public class CrimePagerActivity extends AppCompatActivity {
                 break;
             }
         }
+    }
+
+    @Override
+    public void onCrimeUpdated(Crime crime) {
+
     }
 }

@@ -1,6 +1,7 @@
 package com.bignerdranch.android.criminalintent.fragments;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -22,7 +23,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bignerdranch.android.criminalintent.R;
-import com.bignerdranch.android.criminalintent.activities.CrimePagerActivity;
 import com.bignerdranch.android.criminalintent.models.Crime;
 import com.bignerdranch.android.criminalintent.models.CrimeLab;
 
@@ -41,6 +41,23 @@ public class CrimeListFragment extends Fragment {
     private TextView mEmptyTextView;
     private CrimeAdapter mCrimeAdapter;
     private boolean mSubtitleVisible;
+    private Callbacks mCallbacks;
+
+    public interface Callbacks {
+        void onCrimeSelected(Crime crime);
+    }
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        mCallbacks = (Callbacks)getActivity();
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        mCallbacks = null;
+    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -107,9 +124,10 @@ public class CrimeListFragment extends Fragment {
             case R.id.menu_item_new_crime:
                 Crime crime = new Crime();
                 CrimeLab.getInstance(getActivity()).addCrime(crime);
-                Intent intent = CrimePagerActivity.newIntent(getActivity(), crime.getId(), crime.getPosition());
-                Log.d("crimelist", "add new crime, position = " + crime.getPosition());
-                startActivityForResult(intent, REQUEST_CRIME);
+                /*Intent intent = CrimePagerActivity.newIntent(getActivity(), crime.getId());
+                startActivityForResult(intent, REQUEST_CRIME);*/
+                updateUI();
+                mCallbacks.onCrimeSelected(crime);
                 return true;
 
             case R.id.menu_item_show_subtitle:
@@ -135,7 +153,7 @@ public class CrimeListFragment extends Fragment {
         activity.getSupportActionBar().setSubtitle(subTitle);
     }
 
-    private void updateUI() {
+    public void updateUI() {
 
         CrimeLab crimeLab = CrimeLab.getInstance(getActivity());
         List<Crime> crimes = crimeLab.getCrimes();
@@ -147,11 +165,11 @@ public class CrimeListFragment extends Fragment {
         if (mCrimeAdapter == null) {
             mCrimeAdapter = new CrimeAdapter(crimes);
             mCrimeRecyclerView.setAdapter(mCrimeAdapter);
-            updateSubtitle();
         } else {
+            mCrimeAdapter.setCrimes(crimes);
             mCrimeAdapter.notifyDataSetChanged();
-            updateSubtitle();
         }
+        updateSubtitle();
     }
 
     private class CrimeAdapter extends RecyclerView.Adapter<CrimeHolder> {
@@ -174,7 +192,7 @@ public class CrimeListFragment extends Fragment {
         public void onBindViewHolder(CrimeHolder holder, int position) {
 
             Crime crime = mCrimes.get(position);
-            holder.bindCrime(crime, position);
+            holder.bindCrime(crime);
         }
 
         @Override
@@ -190,6 +208,10 @@ public class CrimeListFragment extends Fragment {
             }
             return mCrimes.size();
         }
+
+        public void setCrimes(List<Crime> crimes) {
+            mCrimes = crimes;
+        }
     }
 
     private class CrimeHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
@@ -198,7 +220,6 @@ public class CrimeListFragment extends Fragment {
         private TextView mTitleTextView;
         private TextView mDateTextView;
         private CheckBox mSolvedCheckBox;
-        private int mPosition;
 
         public CrimeHolder(View itemView) {
             super(itemView);
@@ -213,27 +234,26 @@ public class CrimeListFragment extends Fragment {
                 @Override
                 public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                     mCrime.setSolved(b);
+                    CrimeLab.getInstance(getActivity()).updateCrime(mCrime);
                 }
             });
         }
 
-        public void bindCrime(Crime crime, int position) {
+        public void bindCrime(Crime crime) {
 
             mCrime = crime;
             mTitleTextView.setText(mCrime.getTitle());
             mDateTextView.setText(mCrime.getDate().toString());
             mSolvedCheckBox.setChecked(mCrime.isSolved());
-            mPosition = position;
-
-            Log.d("crimelist", "bindcrime = " + position);
         }
 
         @Override
         public void onClick(View view) {
             Toast.makeText(getActivity(), mCrime.getTitle() + " 선택됨!", Toast.LENGTH_SHORT).show();
 
-            Intent intent = CrimePagerActivity.newIntent(getActivity(), mCrime.getId(), mPosition);
-            startActivityForResult(intent, REQUEST_CRIME);
+            /*Intent intent = CrimePagerActivity.newIntent(getActivity(), mCrime.getId());
+            startActivityForResult(intent, REQUEST_CRIME);*/
+            mCallbacks.onCrimeSelected(mCrime);
         }
 
 
